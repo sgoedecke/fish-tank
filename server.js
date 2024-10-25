@@ -70,11 +70,11 @@ function getASCIIState(shipId) {
 
 // Bot configurations
 const BOTS = [
-    { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
-    { id: 'bot1', name: 'Mistral-small', color: '#4ECDC4', model: 'Mistral-small' },
+    // { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
+    // { id: 'bot1', name: 'Mistral-small', color: '#4ECDC4', model: 'Mistral-small' },
     // { id: 'bot2', name: 'GPT 4o', color: '#45B7D1', model: 'gpt-4o'},
-    // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' }
+    { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
+    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' }
 ];
 
 // Initialize bots with configurations
@@ -137,33 +137,45 @@ Respond with ONLY two numbers between -1 and 1 representing x and y direction ve
                     return { x: x / length, y: y / length };
                 }
             }
+        } else {
+            if (response.status == 429) {
+                throw new Error('Rate limit exceeded');
+            }
+            io.emit('botLog', {
+                shipId,
+                name: ship.name,
+                color: ship.color,
+                message: `Error: Falling back to no movement, response status: ${response.status} and body: ${response.body}`,
+                timestamp: new Date().toLocaleTimeString()
+            });
         }
     } catch (error) {
         io.emit('botLog', {
             shipId,
             name: ship.name,
             color: ship.color,
-            message: `Error: Falling back to random movement`,
+            message: `Error: Falling back to no movement, ${error.message}`,
             timestamp: new Date().toLocaleTimeString()
         });
     }
     
-    const angle = Math.random() * Math.PI * 2;
-    return { x: Math.cos(angle), y: Math.sin(angle) };
+    return false
 }
 
 // Update bot directions using AI
 async function updateBotDirections() {
     for (const shipId of Object.keys(gameState.ships)) {
         const newDirection = await getAIDirection(shipId);
-        gameState.ships[shipId].direction = newDirection;
+        if (newDirection) {
+            gameState.ships[shipId].direction = newDirection;
+        }
     }
 }
 
 // Set up periodic direction updates
 setInterval(() => {
     updateBotDirections().catch(console.error);
-}, 1000);
+}, 3000);
 
 
 // Initialize random directions for all bots

@@ -132,6 +132,7 @@
         });
         
         socket.on('botLog', (logEntry) => {
+            console.log(logEntry)
             const logDiv = document.createElement('div');
             logDiv.className = 'logEntry';
             logDiv.style.borderLeft = `4px solid ${logEntry.color}`;
