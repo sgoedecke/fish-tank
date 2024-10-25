@@ -60,7 +60,7 @@ function getASCIIState(shipId) {
     Object.entries(gameState.ships).forEach(([id, ship]) => {
         const pos = scaleToGrid(ship.x, ship.y);
         if (pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight) {
-            grid[pos.y][pos.x] = id === shipId ? 'S' : 'E';
+            grid[pos.y][pos.x] = id === shipId ? 'S' : '.'; // don't show enemy ships
         }
     });
     
@@ -71,10 +71,11 @@ function getASCIIState(shipId) {
 // Bot configurations
 const BOTS = [
     // { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
-    // { id: 'bot1', name: 'Mistral-small', color: '#4ECDC4', model: 'Mistral-small' },
-    // { id: 'bot2', name: 'GPT 4o', color: '#45B7D1', model: 'gpt-4o'},
-    { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' }
+    { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
+
+    // { id: 'bot1', name: 'Mistral-nemo', color: '#4ECDC4', model: 'Mistral-nemo' },
+    // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
+    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' }
 ];
 
 // Initialize bots with configurations
@@ -88,7 +89,8 @@ BOTS.forEach(botConfig => {
         score: 0,
         name: botConfig.name,
         color: botConfig.color,
-        model: botConfig.model
+        model: botConfig.model,
+        history: []
     };
 });
 
@@ -96,19 +98,31 @@ BOTS.forEach(botConfig => {
 async function getAIDirection(shipId) {
     const ship = gameState.ships[shipId];
     const asciiState = getASCIIState(shipId);
-    
+
+    // normalize ship.direction into a basis vector
+    let length = Math.sqrt(ship.direction.x * ship.direction.x + ship.direction.y * ship.direction.y);
+    if (length == 0) { length = 1; } // avoid division by zero
+    const basis = { x: ship.direction.x / length, y: ship.direction.y / length };
+
+    ship.history.push(asciiState + '\n\n' + `${basis.x},${basis.y}` + '\n\n------\n\n');
+    // if history is > 3, remove the oldest entry
+    if (ship.history.length > 3) {
+        ship.history.shift();
+    }
+
     const prompt = `You are ${ship.name}, a pirate ship AI in a game. The game state is shown below as ASCII:
 '.' is empty space
 'o' is a doubloon (treasure)
 'S' is your ship
-'E' is enemy ships
 
-You must move towards the nearest doubloon in order to collect it before enempy ships can!
+You must move towards the nearest doubloon in order to collect it before enemy ships can!
 
-Your current score is ${ship.score}. Decide where to move:
-${asciiState}
+Your current score is ${ship.score}.  Decide where to move, based on this history of your previous actions and game states:
+${ship.history.join('\n')}
 
-Respond with ONLY two numbers between -1 and 1 representing x and y direction vectors, separated by a comma. For example: "0.5,-0.7"`;
+Be brief. Your response must finish with two numbers between -1 and 1 representing x and y direction vectors, separated by a comma. For example: "0.5,-0.7" will move the ship south-west.`;
+
+console.log('\n\n', prompt)
 
     try {
         const response = await client.path("/chat/completions").post({
@@ -119,18 +133,26 @@ Respond with ONLY two numbers between -1 and 1 representing x and y direction ve
         });
 
         if (response.status === "200") {
-            const directionStr = response.body.choices[0].message.content.trim();
+            const responseText = response.body.choices[0].message.content.trim();
+
+            const regex = /["']?-?\d+(\.\d+)?\s*,-?\d+(\.\d+)?["']?$/; // pull out the direction vector at the end of the response
+            const match = responseText.match(regex);
+            let directionStr = "";
+
+            if (match) {
+                directionStr = match[0];
+            }
             
             // Emit log message to clients
             io.emit('botLog', {
                 shipId,
                 name: ship.name,
                 color: ship.color,
-                message: `Direction: ${directionStr}`,
+                message: `Direction: ${responseText}`,
                 timestamp: new Date().toLocaleTimeString()
             });
 
-            const [x, y] = directionStr.split(',').map(Number);
+            let [x, y] = directionStr.split(',').map(Number);
             if (!isNaN(x) && !isNaN(y) && Math.abs(x) <= 1 && Math.abs(y) <= 1) {
                 const length = Math.sqrt(x * x + y * y);
                 if (length > 0) {
@@ -173,18 +195,16 @@ async function updateBotDirections() {
 }
 
 // Set up periodic direction updates
+// To stay under the rate limits for Low models, we have to sit at 1 request every 3-4 seconds in total
+// const interval = 3500 * Object.keys(gameState.ships).length;
+const interval = 6500 * Object.keys(gameState.ships).length;
+
 setInterval(() => {
     updateBotDirections().catch(console.error);
-}, 3000);
+}, interval);
 
-
-// Initialize random directions for all bots
-Object.values(gameState.ships).forEach(updateBotDirections);
-
-// Set up periodic direction changes
-setInterval(() => {
-    Object.values(gameState.ships).forEach(updateBotDirections);
-}, 3000);
+// Initialize  directions for all bots
+updateBotDirections().catch(console.error);
 
 function checkWallCollision(ship) {
     let collided = false;
@@ -294,7 +314,7 @@ function spawnDoubloon() {
 }
 
 function checkDoubloonCollection(ship) {
-    const COLLECTION_DISTANCE = SHIP_RADIUS + 5;
+    const COLLECTION_DISTANCE = SHIP_RADIUS + 10;
     gameState.doubloons = gameState.doubloons.filter(doubloon => {
         const dx = ship.x - doubloon.x;
         const dy = ship.y - doubloon.y;
