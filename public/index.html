@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Pirate Bots</title>
+    <style>
+        body {
+            display: flex;
+            margin: 20px;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameContainer {
+            display: flex;
+            gap: 20px;
+        }
+        
+        canvas {
+            border: 1px solid black;
+            background-color: white;
+        }
+        
+        #logContainer {
+            width: 300px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #scoreBoard {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        #logWindow {
+            flex-grow: 1;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        
+        .logEntry {
+            padding: 5px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="logContainer">
+            <div id="scoreBoard"></div>
+            <div id="logWindow"></div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const logWindow = document.getElementById('logWindow');
+        const scoreBoard = document.getElementById('scoreBoard');
+        
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        const socket = io();
+        
+        // Maximum number of log entries to keep
+        const MAX_LOG_ENTRIES = 100;
+        
+        function drawShip(ship) {
+            // Draw ship body
+            ctx.beginPath();
+            ctx.arc(ship.x, ship.y, 15, 0, Math.PI * 2);
+            ctx.fillStyle = ship.color;
+            ctx.fill();
+            
+            // Draw direction indicator
+            ctx.beginPath();
+            ctx.moveTo(ship.x, ship.y);
+            ctx.lineTo(
+                ship.x + ship.direction.x * 20,
+                ship.y + ship.direction.y * 20
+            );
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
+        }
+        
+        function drawDoubloon(doubloon) {
+            ctx.beginPath();
+            ctx.arc(doubloon.x, doubloon.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFD700';
+            ctx.fill();
+            ctx.strokeStyle = '#B8860B';
+            ctx.stroke();
+        }
+        
+        function updateScoreBoard(ships) {
+            scoreBoard.innerHTML = '<h3>Scoreboard</h3>';
+            Object.values(ships)
+                .sort((a, b) => b.score - a.score)
+                .forEach(ship => {
+                    scoreBoard.innerHTML += `
+                        <div style="color: ${ship.color}; margin: 5px 0;">
+                            ${ship.name}: ${ship.score}
+                        </div>
+                    `;
+                });
+        }
+        
+        socket.on('gameState', (gameState) => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            gameState.doubloons.forEach(drawDoubloon);
+            Object.values(gameState.ships).forEach(drawShip);
+            
+            updateScoreBoard(gameState.ships);
+        });
+        
+        socket.on('botLog', (logEntry) => {
+            const logDiv = document.createElement('div');
+            logDiv.className = 'logEntry';
+            logDiv.style.borderLeft = `4px solid ${logEntry.color}`;
+            logDiv.innerHTML = `
+                <span class="timestamp">[${logEntry.timestamp}]</span>
+                <strong style="color: ${logEntry.color}">${logEntry.name}:</strong>
+                ${logEntry.message}
+            `;
+            
+            logWindow.insertBefore(logDiv, logWindow.firstChild);
+            
+            // Trim old log entries
+            while (logWindow.children.length > MAX_LOG_ENTRIES) {
+                logWindow.removeChild(logWindow.lastChild);
+            }
+        });
+    </script>
+</body>
+</html>
