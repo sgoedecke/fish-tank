@@ -20,7 +20,7 @@ const client = new ModelClient(
 
 // Game constants
 const SHIP_RADIUS = 15;
-const GRID_SIZE = 10; // Size of ASCII grid
+const GRID_SIZE = 20; // Size of ASCII grid
 
 const gameState = {
     ships: {},
@@ -94,6 +94,25 @@ BOTS.forEach(botConfig => {
     };
 });
 
+function extractLastCoordinates(text) {
+    // Regular expression to capture two floating point numbers (including possible minus signs and decimals)
+    const regex = /(-?\d*\.?\d+),\s*(-?\d*\.?\d+)/g;
+    let match;
+    let lastMatch = null;
+
+    // Iterate over all matches to get the last one
+    while ((match = regex.exec(text)) !== null) {
+        lastMatch = match;
+    }
+
+    if (lastMatch) {
+        // Return the last numbers as an array of floats
+        return [parseFloat(lastMatch[1]), parseFloat(lastMatch[2])];
+    } else {
+        return null; // Return null if no match is found
+    }
+}
+
 // Modified AI direction function to include logging
 async function getAIDirection(shipId) {
     const ship = gameState.ships[shipId];
@@ -123,7 +142,11 @@ You can only change direction every few seconds, so try and get it right the fir
 Decide where to move, based on this game state. Remember that you are 'S' and you want to move towards the nearest 'o'.:
 ${asciiState}
 
-Be brief. Your response must finish with two numbers between -1 and 1 representing x and y direction vectors, separated by a comma. For example: "0.5,-0.7" will move the ship south-east.`;
+Be brief. Your response must finish with two numbers between -1 and 1 representing x and y direction vectors, separated by a comma.
+The vectors are relative to an 0,0 position in the top left of the screen.
+The first number is the horizontal (x) direction: -1 is left, 1 is right.
+The second number is the vertical (y) direction: -1 is up, 1 is down.
+For example: "0.5,-0.7" will move the ship south-east. "0.0,1.0" will move the ship directly down.`;
 
 console.log('\n\n', prompt)
 
@@ -138,13 +161,7 @@ console.log('\n\n', prompt)
         if (response.status === "200") {
             const responseText = response.body.choices[0].message.content.trim();
 
-            const regex = /["']?-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?["'.]?$/; // pull out the direction vector at the end of the response
-            const match = responseText.match(regex);
-            let directionStr = "";
 
-            if (match) {
-                directionStr = match[0];
-            }
             
             // Emit log message to clients
             io.emit('botLog', {
@@ -155,7 +172,8 @@ console.log('\n\n', prompt)
                 timestamp: new Date().toLocaleTimeString()
             });
 
-            let [x, y] = directionStr.split(',').map(Number);
+            let [x,y] = extractLastCoordinates(responseText)
+
             if (!isNaN(x) && !isNaN(y) && Math.abs(x) <= 1 && Math.abs(y) <= 1) {
                 const length = Math.sqrt(x * x + y * y);
                 if (length > 0) {
@@ -309,7 +327,7 @@ function updateShip(ship) {
 }
 
 function spawnDoubloon() {
-    if (gameState.doubloons.length < 1) {
+    if (gameState.doubloons.length < 2) { // 2 doubloons max
         gameState.doubloons.push({
             id: Date.now(),
             x: SHIP_RADIUS + Math.random() * (gameState.worldSize.width - 2 * SHIP_RADIUS),
