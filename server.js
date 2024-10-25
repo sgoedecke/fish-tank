@@ -20,19 +20,19 @@ const client = new ModelClient(
 
 // Game constants
 const SHIP_RADIUS = 15;
-const GRID_SIZE = 20; // Size of ASCII grid
+const GRID_SIZE = 10; // Size of ASCII grid
 
 const gameState = {
     ships: {},
     doubloons: [],
-    worldSize: { width: 800, height: 600 }
+    worldSize: { width: 400, height: 300 }
 };
 
 // Physics constants remain the same
 const ACCELERATION = 0.2;
-const MAX_SPEED = 3;
+const MAX_SPEED = 1;
 const FRICTION = 0.98;
-const BOUNCE_FACTOR = 0.8;
+const BOUNCE_FACTOR = 1//0.8;
 
 // Convert game state to ASCII grid
 function getASCIIState(shipId) {
@@ -70,12 +70,12 @@ function getASCIIState(shipId) {
 
 // Bot configurations
 const BOTS = [
-    // { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
-    { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
-
-    // { id: 'bot1', name: 'Mistral-nemo', color: '#4ECDC4', model: 'Mistral-nemo' },
-    // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' }
+    // { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
+    // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
+    { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
+    { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
+    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
+    { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
 ];
 
 // Initialize bots with configurations
@@ -104,7 +104,8 @@ async function getAIDirection(shipId) {
     if (length == 0) { length = 1; } // avoid division by zero
     const basis = { x: ship.direction.x / length, y: ship.direction.y / length };
 
-    ship.history.push(asciiState + '\n\n' + `${basis.x},${basis.y}` + '\n\n------\n\n');
+    const lastHistoryItem = asciiState + '\n\n' + `${basis.x},${basis.y}` + '\n\n------\n\n'
+    ship.history.push(lastHistoryItem);
     // if history is > 3, remove the oldest entry
     if (ship.history.length > 3) {
         ship.history.shift();
@@ -116,11 +117,13 @@ async function getAIDirection(shipId) {
 'S' is your ship
 
 You must move towards the nearest doubloon in order to collect it before enemy ships can!
+The game space is surrounded by walls you cannot pass through.
+You can only change direction every few seconds, so try and get it right the first time.
 
-Your current score is ${ship.score}.  Decide where to move, based on this history of your previous actions and game states:
-${ship.history.join('\n')}
+Decide where to move, based on this game state. Remember that you are 'S' and you want to move towards the nearest 'o'.:
+${asciiState}
 
-Be brief. Your response must finish with two numbers between -1 and 1 representing x and y direction vectors, separated by a comma. For example: "0.5,-0.7" will move the ship south-west.`;
+Be brief. Your response must finish with two numbers between -1 and 1 representing x and y direction vectors, separated by a comma. For example: "0.5,-0.7" will move the ship south-east.`;
 
 console.log('\n\n', prompt)
 
@@ -135,7 +138,7 @@ console.log('\n\n', prompt)
         if (response.status === "200") {
             const responseText = response.body.choices[0].message.content.trim();
 
-            const regex = /["']?-?\d+(\.\d+)?\s*,-?\d+(\.\d+)?["']?$/; // pull out the direction vector at the end of the response
+            const regex = /["']?-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?["'.]?$/; // pull out the direction vector at the end of the response
             const match = responseText.match(regex);
             let directionStr = "";
 
@@ -196,8 +199,10 @@ async function updateBotDirections() {
 
 // Set up periodic direction updates
 // To stay under the rate limits for Low models, we have to sit at 1 request every 3-4 seconds in total
-// const interval = 3500 * Object.keys(gameState.ships).length;
-const interval = 6500 * Object.keys(gameState.ships).length;
+const interval = 3500 * Object.keys(gameState.ships).length;
+// const interval = 6500 * Object.keys(gameState.ships).length; // for high models
+
+spawnDoubloon() // make sure there's a goal to start with before we ask the AIs what to do
 
 setInterval(() => {
     updateBotDirections().catch(console.error);
@@ -304,7 +309,7 @@ function updateShip(ship) {
 }
 
 function spawnDoubloon() {
-    if (gameState.doubloons.length < 2) {
+    if (gameState.doubloons.length < 1) {
         gameState.doubloons.push({
             id: Date.now(),
             x: SHIP_RADIUS + Math.random() * (gameState.worldSize.width - 2 * SHIP_RADIUS),

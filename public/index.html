@@ -2,113 +2,302 @@
 <html>
 <head>
     <title>AI Pirate Bots</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            display: flex;
-            margin: 20px;
-            background-color: #f0f0f0;
-            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: #e6e6e6;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+            padding: 16px;
         }
-        
-        #gameContainer {
-            display: flex;
-            gap: 20px;
+
+        .header {
+            background: #16213e;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #2a385e;
+            grid-column: 1 / -1;
         }
-        
-        canvas {
-            border: 1px solid black;
-            background-color: white;
+
+        .header h1 {
+            font-size: 24px;
+            color: #e6e6e6;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
-        
-        #logContainer {
-            width: 300px;
-            height: 600px;
+
+        .game-section {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 16px;
         }
-        
-        #scoreBoard {
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        #logWindow {
+
+        .canvas-wrapper {
+            background: #16213e;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid #2a385e;
             flex-grow: 1;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background: #0f3460;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        #logWindow {
+            background: #16213e;
+            border-radius: 12px;
+            border: 1px solid #2a385e;
+            padding: 16px;
+            height: 200px;
             overflow-y: auto;
             display: flex;
             flex-direction: column-reverse;
         }
-        
-        .logEntry {
-            padding: 5px;
-            margin: 2px 0;
-            border-radius: 3px;
-            font-size: 14px;
+
+        .side-panel {
+            background: #16213e;
+            border-radius: 12px;
+            border: 1px solid #2a385e;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
         }
-        
+
+        #scoreBoard h3 {
+            color: #e94560;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .logEntry {
+            padding: 8px;
+            margin: 4px 0;
+            background: rgba(15, 52, 96, 0.5);
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
         .timestamp {
             font-size: 12px;
-            color: #666;
+            color: #888;
+            font-family: monospace;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #16213e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a385e;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a486e;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+
+            .game-section {
+                order: 2;
+            }
+
+            .side-panel {
+                order: 1;
+            }
+
+            .canvas-wrapper {
+                aspect-ratio: 16/9;
+            }
+
+            canvas {
+                width: 100%;
+                height: 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
-        <div id="logContainer">
-            <div id="scoreBoard"></div>
-            <div id="logWindow"></div>
+    <header class="header">
+        <h1>🏴‍☠️ AI Pirate Bots Arena</h1>
+    </header>
+    <main class="game-section">
+        <div class="canvas-wrapper">
+            <canvas id="gameCanvas"></canvas>
         </div>
-    </div>
+        <div id="logWindow"></div>
+    </main>
+    <aside class="side-panel">
+        <div id="scoreBoard"></div>
+    </aside>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+
         const logWindow = document.getElementById('logWindow');
         const scoreBoard = document.getElementById('scoreBoard');
-        
-        canvas.width = 800;
-        canvas.height = 600;
         
         const socket = io();
         
         // Maximum number of log entries to keep
         const MAX_LOG_ENTRIES = 100;
         
+        
+        // Set canvas size
+        canvas.style.width = '800px';
+        canvas.style.height = '600px';
+
+        const scale = window.devicePixelRatio;
+        canvas.width = Math.floor(800 * scale);
+        canvas.height = Math.floor(600 * scale);
+        ctx.scale(scale, scale);
+
         function drawShip(ship) {
-            // Draw ship body
+            ctx.save();
+            
+            // Move to ship position and rotate
+            ctx.translate(ship.x * 2, ship.y * 2);
+            ctx.rotate(Math.atan2(ship.direction.y, ship.direction.x));
+  
+            // Draw simplified ship triangle
             ctx.beginPath();
-            ctx.arc(ship.x, ship.y, 15, 0, Math.PI * 2);
+            ctx.moveTo(20, 0); // Point
+            ctx.lineTo(-15, -12); // Back left
+            ctx.lineTo(-15, 12); // Back right
+            ctx.closePath();
+            
+            // Fill ship body
             ctx.fillStyle = ship.color;
             ctx.fill();
-            
-            // Draw direction indicator
-            ctx.beginPath();
-            ctx.moveTo(ship.x, ship.y);
-            ctx.lineTo(
-                ship.x + ship.direction.x * 20,
-                ship.y + ship.direction.y * 20
-            );
             ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
             ctx.stroke();
-        }
-        
-        function drawDoubloon(doubloon) {
+            
+            // Draw simple mast
             ctx.beginPath();
-            ctx.arc(doubloon.x, doubloon.y, 10, 0, Math.PI * 2);
+            ctx.moveTo(-5, 0);
+            ctx.lineTo(-5, -20);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw simple flag
+            ctx.beginPath();
+            ctx.moveTo(-5, -20);
+            ctx.lineTo(5, -15);
+            ctx.lineTo(-5, -10);
+            ctx.fillStyle = ship.color;
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        function drawDoubloon(doubloon, timestamp) {
+            ctx.save();
+            
+            const wobble = Math.sin(timestamp/500) * 2;
+            const glowRadius = 10;
+            const x = doubloon.x * 2;
+            const y = doubloon.y * 2 + wobble;
+            
+            // Draw glow effect
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Coin body
+            ctx.beginPath();
+            ctx.ellipse(x, y, 10, 8, 0, 0, Math.PI * 2);
             ctx.fillStyle = '#FFD700';
             ctx.fill();
             ctx.strokeStyle = '#B8860B';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
+            
+            // Inner detail
+            ctx.beginPath();
+            ctx.ellipse(x, y, 6, 4, 0, 0, Math.PI * 2);
+            ctx.strokeStyle = '#B8860B';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Gleam effect
+            ctx.beginPath();
+            ctx.ellipse(x - 3, y - 3, 2, 1, Math.PI/4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fill();
+            
+            ctx.restore();
         }
+
+        let lastTimestamp = 0;
+        function render(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = timestamp - lastTimestamp;
+            
+            // Clear and fill background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+
+            // Draw game objects
+            if (currentGameState) {
+                currentGameState.doubloons.forEach(d => drawDoubloon(d, timestamp));
+                Object.values(currentGameState.ships).forEach(ship => {
+                    drawShip(ship);
+                });
+            }
+            
+            lastTimestamp = timestamp;
+            requestAnimationFrame(render);
+        }
+
+        let currentGameState = null;
         
+        socket.on('gameState', (gameState) => {
+            currentGameState = gameState;
+            updateScoreBoard(gameState.ships);
+        });
+
+        requestAnimationFrame(render);
+
         function updateScoreBoard(ships) {
             scoreBoard.innerHTML = '<h3>Scoreboard</h3>';
             Object.values(ships)
@@ -122,20 +311,9 @@
                 });
         }
         
-        socket.on('gameState', (gameState) => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            gameState.doubloons.forEach(drawDoubloon);
-            Object.values(gameState.ships).forEach(drawShip);
-            
-            updateScoreBoard(gameState.ships);
-        });
-        
         socket.on('botLog', (logEntry) => {
-            console.log(logEntry)
             const logDiv = document.createElement('div');
             logDiv.className = 'logEntry';
-            logDiv.style.borderLeft = `4px solid ${logEntry.color}`;
             logDiv.innerHTML = `
                 <span class="timestamp">[${logEntry.timestamp}]</span>
                 <strong style="color: ${logEntry.color}">${logEntry.name}:</strong>
@@ -144,7 +322,6 @@
             
             logWindow.insertBefore(logDiv, logWindow.firstChild);
             
-            // Trim old log entries
             while (logWindow.children.length > MAX_LOG_ENTRIES) {
                 logWindow.removeChild(logWindow.lastChild);
             }
