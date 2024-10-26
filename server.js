@@ -23,8 +23,8 @@ const SHIP_RADIUS = 15;
 const GRID_SIZE = 20; // Size of ASCII grid
 
 const gameState = {
-    ships: {},
-    doubloons: [],
+    fishes: {},
+    fishFoods: [],
     worldSize: { width: 400, height: 300 },
     rateLimitExceeded: false
 };
@@ -38,7 +38,7 @@ const BOUNCE_FACTOR = 1//0.8;
 const AI_DECISION_INTERVAL = 3500 // this will be xed by the number of models. It stays under the rate limit for low-tier models (at least until the daily limit is exceeded)
 
 // Convert game state to ASCII grid
-function getASCIIState(shipId) {
+function getASCIIState(fishId) {
     const gridWidth = GRID_SIZE;
     const gridHeight = Math.floor(GRID_SIZE * (gameState.worldSize.height / gameState.worldSize.width));
     let grid = Array(gridHeight).fill().map(() => Array(gridWidth).fill('.'));
@@ -51,19 +51,19 @@ function getASCIIState(shipId) {
         };
     }
     
-    // Add doubloons
-    gameState.doubloons.forEach(doubloon => {
-        const pos = scaleToGrid(doubloon.x, doubloon.y);
+    // Add fishFoods
+    gameState.fishFoods.forEach(fishFood => {
+        const pos = scaleToGrid(fishFood.x, fishFood.y);
         if (pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight) {
             grid[pos.y][pos.x] = 'o';
         }
     });
     
-    // Add ships
-    Object.entries(gameState.ships).forEach(([id, ship]) => {
-        const pos = scaleToGrid(ship.x, ship.y);
+    // Add fishes
+    Object.entries(gameState.fishes).forEach(([id, fish]) => {
+        const pos = scaleToGrid(fish.x, fish.y);
         if (pos.x >= 0 && pos.x < gridWidth && pos.y >= 0 && pos.y < gridHeight) {
-            grid[pos.y][pos.x] = id === shipId ? 'S' : '.'; // don't show enemy ships
+            grid[pos.y][pos.x] = id === fishId ? 'S' : '.'; // don't show enemy fishes
         }
     });
     
@@ -75,16 +75,16 @@ function getASCIIState(shipId) {
 const BOTS = [
     // { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
     // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
-    // { id: 'bot2', name: 'GPT 4o-mini', color: '#FFEEAD', model: 'gpt-4o-mini' },
+    { id: 'bot2', name: 'GPT 4o-mini', color: 'blue', model: 'gpt-4o-mini' },
     // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
-    // { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
-    { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
+    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: 'purple', model: 'Phi-3-small-8k-instruct' },
+    { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
+    // { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
 ];
 
 // Initialize bots with configurations
 BOTS.forEach(botConfig => {
-    gameState.ships[botConfig.id] = {
+    gameState.fishes[botConfig.id] = {
         x: Math.random() * gameState.worldSize.width,
         y: Math.random() * gameState.worldSize.height,
         velocity: { x: 0, y: 0 },
@@ -118,28 +118,28 @@ function extractLastCoordinates(text) {
 }
 
 // Modified AI direction function to include logging
-async function getAIDirection(shipId) {
-    const ship = gameState.ships[shipId];
-    const asciiState = getASCIIState(shipId);
+async function getAIDirection(fishId) {
+    const fish = gameState.fishes[fishId];
+    const asciiState = getASCIIState(fishId);
 
-    // normalize ship.direction into a basis vector
-    let length = Math.sqrt(ship.direction.x * ship.direction.x + ship.direction.y * ship.direction.y);
+    // normalize fish.direction into a basis vector
+    let length = Math.sqrt(fish.direction.x * fish.direction.x + fish.direction.y * fish.direction.y);
     if (length == 0) { length = 1; } // avoid division by zero
-    const basis = { x: ship.direction.x / length, y: ship.direction.y / length };
+    const basis = { x: fish.direction.x / length, y: fish.direction.y / length };
 
     const lastHistoryItem = asciiState + '\n\n' + `${basis.x},${basis.y}` + '\n\n------\n\n'
-    ship.history.push(lastHistoryItem);
+    fish.history.push(lastHistoryItem);
     // if history is > 3, remove the oldest entry
-    if (ship.history.length > 3) {
-        ship.history.shift();
+    if (fish.history.length > 3) {
+        fish.history.shift();
     }
 
-    const prompt = `You are ${ship.name}, a pirate ship AI in a game. The game state is shown below as ASCII:
+    const prompt = `You are ${fish.name}, a fish AI in a game. The game state is shown below as ASCII:
 '.' is empty space
-'o' is a doubloon (treasure)
-'S' is your ship
+'o' is a piece of fish food
+'S' is your fish
 
-You must move towards the nearest doubloon in order to collect it before enemy ships can!
+You must move towards the nearest fish food in order to collect it before enemy fishes can!
 The game space is surrounded by walls you cannot pass through.
 You can only change direction every few seconds, so try and get it right the first time.
 
@@ -150,7 +150,7 @@ Be brief. Your response must finish with two numbers between -1 and 1 representi
 The vectors are relative to an 0,0 position in the top left of the screen.
 The first number is the horizontal (x) direction: -1 is left, 1 is right.
 The second number is the vertical (y) direction: -1 is up, 1 is down.
-For example: "0.5,-0.7" will move the ship south-east. "0.0,1.0" will move the ship directly down.`;
+For example: "0.5,-0.7" will move the fish south-east. "0.0,1.0" will move the fish directly down.`;
 
 console.log('\n\n', prompt)
 
@@ -163,7 +163,7 @@ console.log('\n\n', prompt)
         const response = await client.path("/chat/completions").post({
             body: {
                 messages: [{ role: "user", content: prompt }],
-                model: ship.model
+                model: fish.model
             }
         });
 
@@ -174,9 +174,9 @@ console.log('\n\n', prompt)
             
             // Emit log message to clients
             io.emit('botLog', {
-                shipId,
-                name: ship.name,
-                color: ship.color,
+                fishId,
+                name: fish.name,
+                color: fish.color,
                 message: `Direction: ${responseText}`,
                 timestamp: new Date().toLocaleTimeString()
             });
@@ -198,18 +198,18 @@ console.log('\n\n', prompt)
                 throw new Error('Rate limit exceeded');
             }
             io.emit('botLog', {
-                shipId,
-                name: ship.name,
-                color: ship.color,
+                fishId,
+                name: fish.name,
+                color: fish.color,
                 message: `Error: Falling back to no movement, response status: ${response.status} and body: ${response.body}`,
                 timestamp: new Date().toLocaleTimeString()
             });
         }
     } catch (error) {
         io.emit('botLog', {
-            shipId,
-            name: ship.name,
-            color: ship.color,
+            fishId,
+            name: fish.name,
+            color: fish.color,
             message: `Error: Falling back to no movement, ${error.message}`,
             timestamp: new Date().toLocaleTimeString()
         });
@@ -220,19 +220,19 @@ console.log('\n\n', prompt)
 
 // Update bot directions using AI
 async function updateBotDirections() {
-    for (const shipId of Object.keys(gameState.ships)) {
-        const newDirection = await getAIDirection(shipId);
+    for (const fishId of Object.keys(gameState.fishes)) {
+        const newDirection = await getAIDirection(fishId);
         if (newDirection) {
-            gameState.ships[shipId].direction = newDirection;
+            gameState.fishes[fishId].direction = newDirection;
         }
     }
 }
 
 // Set up periodic direction updates
 // To stay under the rate limits for Low models, we have to sit at 1 request every 3-4 seconds in total
-const interval = AI_DECISION_INTERVAL * Object.keys(gameState.ships).length;
+const interval = AI_DECISION_INTERVAL * Object.keys(gameState.fishes).length;
 
-spawnDoubloon() // make sure there's a goal to start with before we ask the AIs what to do
+spawnFishFood() // make sure there's a goal to start with before we ask the AIs what to do
 
 setInterval(() => {
     updateBotDirections().catch(console.error);
@@ -241,41 +241,41 @@ setInterval(() => {
 // Initialize  directions for all bots
 updateBotDirections().catch(console.error);
 
-function checkWallCollision(ship) {
+function checkWallCollision(fish) {
     let collided = false;
     
-    if (ship.x - SHIP_RADIUS < 0) {
-        ship.x = SHIP_RADIUS;
-        ship.velocity.x = Math.abs(ship.velocity.x) * BOUNCE_FACTOR;
+    if (fish.x - SHIP_RADIUS < 0) {
+        fish.x = SHIP_RADIUS;
+        fish.velocity.x = Math.abs(fish.velocity.x) * BOUNCE_FACTOR;
         collided = true;
-    } else if (ship.x + SHIP_RADIUS > gameState.worldSize.width) {
-        ship.x = gameState.worldSize.width - SHIP_RADIUS;
-        ship.velocity.x = -Math.abs(ship.velocity.x) * BOUNCE_FACTOR;
+    } else if (fish.x + SHIP_RADIUS > gameState.worldSize.width) {
+        fish.x = gameState.worldSize.width - SHIP_RADIUS;
+        fish.velocity.x = -Math.abs(fish.velocity.x) * BOUNCE_FACTOR;
         collided = true;
     }
     
-    if (ship.y - SHIP_RADIUS < 0) {
-        ship.y = SHIP_RADIUS;
-        ship.velocity.y = Math.abs(ship.velocity.y) * BOUNCE_FACTOR;
+    if (fish.y - SHIP_RADIUS < 0) {
+        fish.y = SHIP_RADIUS;
+        fish.velocity.y = Math.abs(fish.velocity.y) * BOUNCE_FACTOR;
         collided = true;
-    } else if (ship.y + SHIP_RADIUS > gameState.worldSize.height) {
-        ship.y = gameState.worldSize.height - SHIP_RADIUS;
-        ship.velocity.y = -Math.abs(ship.velocity.y) * BOUNCE_FACTOR;
+    } else if (fish.y + SHIP_RADIUS > gameState.worldSize.height) {
+        fish.y = gameState.worldSize.height - SHIP_RADIUS;
+        fish.velocity.y = -Math.abs(fish.velocity.y) * BOUNCE_FACTOR;
         collided = true;
     }
     
     return collided;
 }
 
-function checkShipCollisions() {
-    const ships = Object.values(gameState.ships);
-    for (let i = 0; i < ships.length; i++) {
-        for (let j = i + 1; j < ships.length; j++) {
-            const ship1 = ships[i];
-            const ship2 = ships[j];
+function checkFishCollisions() {
+    const fishes = Object.values(gameState.fishes);
+    for (let i = 0; i < fishes.length; i++) {
+        for (let j = i + 1; j < fishes.length; j++) {
+            const fish1 = fishes[i];
+            const fish2 = fishes[j];
             
-            const dx = ship2.x - ship1.x;
-            const dy = ship2.y - ship1.y;
+            const dx = fish2.x - fish1.x;
+            const dy = fish2.y - fish1.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance < SHIP_RADIUS * 2) {
@@ -284,8 +284,8 @@ function checkShipCollisions() {
                 const ny = dy / distance;
                 
                 // Relative velocity
-                const vx = ship1.velocity.x - ship2.velocity.x;
-                const vy = ship1.velocity.y - ship2.velocity.y;
+                const vx = fish1.velocity.x - fish2.velocity.x;
+                const vy = fish1.velocity.y - fish2.velocity.y;
                 
                 // Relative velocity in normal direction
                 const normalVelocity = vx * nx + vy * ny;
@@ -297,50 +297,50 @@ function checkShipCollisions() {
                     const impulse = -(1 + restitution) * normalVelocity / 2;
                     
                     // Apply impulse
-                    ship1.velocity.x -= impulse * nx;
-                    ship1.velocity.y -= impulse * ny;
-                    ship2.velocity.x += impulse * nx;
-                    ship2.velocity.y += impulse * ny;
+                    fish1.velocity.x -= impulse * nx;
+                    fish1.velocity.y -= impulse * ny;
+                    fish2.velocity.x += impulse * nx;
+                    fish2.velocity.y += impulse * ny;
                     
-                    // Separate ships to prevent sticking
+                    // Separate fishes to prevent sticking
                     const overlap = (SHIP_RADIUS * 2 - distance) / 2;
-                    ship1.x -= nx * overlap;
-                    ship1.y -= ny * overlap;
-                    ship2.x += nx * overlap;
-                    ship2.y += ny * overlap;
+                    fish1.x -= nx * overlap;
+                    fish1.y -= ny * overlap;
+                    fish2.x += nx * overlap;
+                    fish2.y += ny * overlap;
                 }
             }
         }
     }
 }
 
-function updateShip(ship) {
+function updateFish(fish) {
     // Update velocity based on direction
-    ship.velocity.x += ship.direction.x * ACCELERATION;
-    ship.velocity.y += ship.direction.y * ACCELERATION;
+    fish.velocity.x += fish.direction.x * ACCELERATION;
+    fish.velocity.y += fish.direction.y * ACCELERATION;
     
     // Apply friction
-    ship.velocity.x *= FRICTION;
-    ship.velocity.y *= FRICTION;
+    fish.velocity.x *= FRICTION;
+    fish.velocity.y *= FRICTION;
     
     // Limit speed
-    const speed = Math.sqrt(ship.velocity.x ** 2 + ship.velocity.y ** 2);
+    const speed = Math.sqrt(fish.velocity.x ** 2 + fish.velocity.y ** 2);
     if (speed > MAX_SPEED) {
-        ship.velocity.x = (ship.velocity.x / speed) * MAX_SPEED;
-        ship.velocity.y = (ship.velocity.y / speed) * MAX_SPEED;
+        fish.velocity.x = (fish.velocity.x / speed) * MAX_SPEED;
+        fish.velocity.y = (fish.velocity.y / speed) * MAX_SPEED;
     }
     
     // Update position
-    ship.x += ship.velocity.x;
-    ship.y += ship.velocity.y;
+    fish.x += fish.velocity.x;
+    fish.y += fish.velocity.y;
     
     // Check wall collisions
-    checkWallCollision(ship);
+    checkWallCollision(fish);
 }
 
-function spawnDoubloon() {
-    if (gameState.doubloons.length < 2) { // 2 doubloons max
-        gameState.doubloons.push({
+function spawnFishFood() {
+    if (gameState.fishFoods.length < 2) { // 2 fishFoods max
+        gameState.fishFoods.push({
             id: Date.now(),
             x: SHIP_RADIUS + Math.random() * (gameState.worldSize.width - 2 * SHIP_RADIUS),
             y: SHIP_RADIUS + Math.random() * (gameState.worldSize.height - 2 * SHIP_RADIUS)
@@ -348,14 +348,14 @@ function spawnDoubloon() {
     }
 }
 
-function checkDoubloonCollection(ship) {
+function checkFishFoodCollection(fish) {
     const COLLECTION_DISTANCE = SHIP_RADIUS + 10;
-    gameState.doubloons = gameState.doubloons.filter(doubloon => {
-        const dx = ship.x - doubloon.x;
-        const dy = ship.y - doubloon.y;
+    gameState.fishFoods = gameState.fishFoods.filter(fishFood => {
+        const dx = fish.x - fishFood.x;
+        const dy = fish.y - fishFood.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < COLLECTION_DISTANCE) {
-            ship.score += 1;
+            fish.score += 1;
             return false;
         }
         return true;
@@ -364,14 +364,14 @@ function checkDoubloonCollection(ship) {
 
 // Game loop
 setInterval(() => {
-    Object.values(gameState.ships).forEach(ship => {
-        updateShip(ship);
-        checkDoubloonCollection(ship);
+    Object.values(gameState.fishes).forEach(fish => {
+        updateFish(fish);
+        checkFishFoodCollection(fish);
     });
     
-    checkShipCollisions();
+    checkFishCollisions();
     
-    if (Math.random() < 0.9) spawnDoubloon();
+    if (Math.random() < 0.9) spawnFishFood();
     
     io.emit('gameState', gameState);
 }, 1000 / 60);

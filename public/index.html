@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Pirate Bots</title>
+    <title>AI Fish Tank</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * {
@@ -164,6 +164,17 @@
                 height: 100%;
             }
         }
+
+        footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
     </style>
     </head>
     <body>
@@ -173,17 +184,24 @@
         <p>All you need to provide is a <a href="https://github.com/settings/tokens/new">GitHub token</a>, since it's powered by GitHub Models.</p>
     </div>
     <header class="header">
-        <h1>🏴‍☠️ AI Pirate Bots Arena</h1>
+        <h1>AI Fish Tank</h1>
     </header>
+    <aside class="side-panel">
+        <div id="scoreBoard"></div>
+    </aside>
     <main class="game-section">
         <div class="canvas-wrapper">
             <canvas id="gameCanvas"></canvas>
         </div>
     </main>
-    <aside class="side-panel">
-        <div id="scoreBoard"></div>
-        <div id="logWindow"></div>
-    </aside>
+
+    <div id="logWindow"></div>
+
+    <footer>
+        <p>
+            <a href="https://github.com/sgoedecke/fish-tank">GitHub</a>
+        </p>
+    </footer>
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -208,54 +226,55 @@
         canvas.height = Math.floor(600 * scale);
         ctx.scale(scale, scale);
 
-        function drawShip(ship) {
+        function drawFish(fish) {
             ctx.save();
             
-            // Move to ship position and rotate
-            ctx.translate(ship.x * 2, ship.y * 2);
-            ctx.rotate(Math.atan2(ship.direction.y, ship.direction.x));
-  
-            // Draw simplified ship triangle
+            // Move to fish position and rotate
+            ctx.translate(fish.x * 2, fish.y * 2);
+            ctx.rotate(Math.atan2(fish.direction.y, fish.direction.x));
+
+            // Draw fish body
             ctx.beginPath();
-            ctx.moveTo(20, 0); // Point
-            ctx.lineTo(-15, -12); // Back left
-            ctx.lineTo(-15, 12); // Back right
+            ctx.moveTo(20, 0); // Nose
+            ctx.quadraticCurveTo(10, -15, -10, -10); // Top curve
+            ctx.lineTo(-20, 0); // Back
+            ctx.lineTo(-10, 10); // Bottom curve
+            ctx.quadraticCurveTo(10, 15, 20, 0); // Close body shape
+            
+            // Fill fish body
+            ctx.fillStyle = fish.color;
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw tail
+            ctx.beginPath();
+            ctx.moveTo(-20, 0);
+            ctx.lineTo(-35, -10);
+            ctx.lineTo(-35, 10);
             ctx.closePath();
-            
-            // Fill ship body
-            ctx.fillStyle = ship.color;
-            ctx.fill();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            // Draw simple mast
-            ctx.beginPath();
-            ctx.moveTo(-5, 0);
-            ctx.lineTo(-5, -20);
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            // Draw simple flag
-            ctx.beginPath();
-            ctx.moveTo(-5, -20);
-            ctx.lineTo(5, -15);
-            ctx.lineTo(-5, -10);
-            ctx.fillStyle = ship.color;
+            ctx.fillStyle = fish.color;
             ctx.fill();
             ctx.stroke();
+            
+            // Draw eye
+            ctx.beginPath();
+            ctx.arc(10, -3, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
             
             ctx.restore();
         }
 
-        function drawDoubloon(doubloon, timestamp) {
+
+        function drawFishFood(fishFood, timestamp) {
             ctx.save();
             
             const wobble = Math.sin(timestamp/500) * 2;
             const glowRadius = 10;
-            const x = doubloon.x * 2;
-            const y = doubloon.y * 2 + wobble;
+            const x = fishFood.x * 2;
+            const y = fishFood.y * 2 + wobble;
             
             // Draw glow effect
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, glowRadius);
@@ -303,9 +322,9 @@
 
             // Draw game objects
             if (currentGameState) {
-                currentGameState.doubloons.forEach(d => drawDoubloon(d, timestamp));
-                Object.values(currentGameState.ships).forEach(ship => {
-                    drawShip(ship);
+                currentGameState.fishFoods.forEach(d => drawFishFood(d, timestamp));
+                Object.values(currentGameState.fishes).forEach(fish => {
+                    drawFish(fish);
                 });
             }
             
@@ -322,19 +341,19 @@
             } else {
                 rateLimitModal.style.display = 'none';
             }
-            updateScoreBoard(gameState.ships);
+            updateScoreBoard(gameState.fishes);
         });
 
         requestAnimationFrame(render);
 
-        function updateScoreBoard(ships) {
+        function updateScoreBoard(fishes) {
             scoreBoard.innerHTML = '<h3>Scoreboard</h3>';
-            Object.values(ships)
+            Object.values(fishes)
                 .sort((a, b) => b.score - a.score)
-                .forEach(ship => {
+                .forEach(fish => {
                     scoreBoard.innerHTML += `
-                        <div style="color: ${ship.color}; margin: 5px 0;">
-                            ${ship.name}: ${ship.score}
+                        <div style="color: ${fish.color}; margin: 5px 0;">
+                            ${fish.name}: ${fish.score}
                         </div>
                     `;
                 });
