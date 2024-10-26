@@ -77,9 +77,9 @@ const BOTS = [
     // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
     // { id: 'bot2', name: 'GPT 4o-mini', color: '#FFEEAD', model: 'gpt-4o-mini' },
     // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
+    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
     // { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
-    // { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
+    { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
 ];
 
 // Initialize bots with configurations

@@ -9,121 +9,120 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+    
         body {
-            background: #1a1a2e;
-            color: #e6e6e6;
+            background: #f4f4f4;
+            color: #333;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             min-height: 100vh;
             display: grid;
-            grid-template-columns: 1fr 300px;
-            grid-template-rows: auto 1fr;
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto 1fr;
             gap: 16px;
             padding: 16px;
         }
-
+    
         .header {
-            background: #16213e;
+            background: #ffffff;
             padding: 16px;
             border-radius: 12px;
-            border: 1px solid #2a385e;
-            grid-column: 1 / -1;
+            border: 1px solid #ddd;
+            text-align: center;
         }
-
+    
         .header h1 {
             font-size: 24px;
-            color: #e6e6e6;
-            text-align: center;
+            color: #333;
             font-weight: 600;
             letter-spacing: 0.5px;
         }
-
+    
         .game-section {
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-
+    
         .canvas-wrapper {
-            background: #16213e;
+            background: #ffffff;
             padding: 16px;
             border-radius: 12px;
-            border: 1px solid #2a385e;
+            border: 1px solid #ddd;
             flex-grow: 1;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-
+    
         canvas {
-            background: #0f3460;
+            background: #e0e0e0;
             border-radius: 8px;
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
-
+    
         #logWindow {
-            background: #16213e;
+            background: #ffffff;
             border-radius: 12px;
-            border: 1px solid #2a385e;
+            border: 1px solid #ddd;
             padding: 16px;
             height: 200px;
             overflow-y: auto;
             display: flex;
             flex-direction: column-reverse;
         }
-
+    
         .side-panel {
-            background: #16213e;
+            background: #ffffff;
             border-radius: 12px;
-            border: 1px solid #2a385e;
+            border: 1px solid #ddd;
             padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 16px;
         }
-
+    
         #scoreBoard h3 {
-            color: #e94560;
+            color: #d9534f;
             margin-bottom: 16px;
             font-size: 18px;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-
+    
         .logEntry {
             padding: 8px;
             margin: 4px 0;
-            background: rgba(15, 52, 96, 0.5);
+            background: #f0f0f0;
             border-radius: 6px;
             font-size: 14px;
             line-height: 1.4;
         }
-
+    
         .timestamp {
             font-size: 12px;
             color: #888;
             font-family: monospace;
         }
-
+    
         ::-webkit-scrollbar {
             width: 8px;
         }
-
+    
         ::-webkit-scrollbar-track {
-            background: #16213e;
+            background: #e0e0e0;
         }
-
+    
         ::-webkit-scrollbar-thumb {
-            background: #2a385e;
+            background: #ccc;
             border-radius: 4px;
         }
-
+    
         ::-webkit-scrollbar-thumb:hover {
-            background: #3a486e;
+            background: #bbb;
         }
-
+    
         #rateLimitModal {
             display: none;
             justify-content: center;
@@ -134,49 +133,40 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent background */
+            background-color: rgba(0, 0, 0, 0.5);
             color: white;
             font-size: 1.5em;
-            z-index: 1000; /* Ensure it is on top of other elements */
+            z-index: 1000;
         }
-
+    
         #rateLimitModal a {
             color: lightblue;
             text-decoration: underline;
         }
-
+    
         #rateLimitModal a:visited {
             color: lightblue;
             text-decoration: underline;
         }
-
-
+    
         @media (max-width: 768px) {
             body {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto auto 1fr;
             }
-
-            .game-section {
-                order: 2;
-            }
-
-            .side-panel {
-                order: 1;
-            }
-
+    
             .canvas-wrapper {
                 aspect-ratio: 16/9;
             }
-
+    
             canvas {
                 width: 100%;
                 height: 100%;
             }
         }
     </style>
-</head>
-<body>
+    </head>
+    <body>
     <div id="rateLimitModal">
         <h3 style="margin-bottom: 10px;">Rate limit exceeded, waiting ten minutes...</h3>
         <p>No need to wait, you can run it locally by <a href="https://github.com/sgoedecke/high-seas">cloning it off GitHub</a>.</p>
@@ -189,10 +179,10 @@
         <div class="canvas-wrapper">
             <canvas id="gameCanvas"></canvas>
         </div>
-        <div id="logWindow"></div>
     </main>
     <aside class="side-panel">
         <div id="scoreBoard"></div>
+        <div id="logWindow"></div>
     </aside>
     <script src="/socket.io/socket.io.js"></script>
     <script>
