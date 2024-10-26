@@ -74,12 +74,12 @@ function getASCIIState(fishId) {
 // Bot configurations
 const BOTS = [
     // { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
-    // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
-    // { id: 'bot2', name: 'GPT 4o-mini', color: 'blue', model: 'gpt-4o-mini' },
-    // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
+    { id: 'bot1', name: 'Mistral-small', color: 'red', model: 'Mistral-small' },
+    { id: 'bot2', name: 'GPT 4o-mini', color: 'blue', model: 'gpt-4o-mini' },
+    { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
     // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: 'purple', model: 'Phi-3-small-8k-instruct' },
     { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
-    // { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
+    { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: 'pink', model: 'AI21-Jamba-1.5-Mini' },
 ];
 
 // Initialize bots with configurations
