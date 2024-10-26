@@ -374,6 +374,11 @@
                 logWindow.removeChild(logWindow.lastChild);
             }
         });
+
+        // when the socket is disconnected, pop up an alert asking the user to refresh
+        socket.on('disconnect', () => {
+            alert('Please refresh the page to reconnect.');
+        });
     </script>
 </body>
 </html>

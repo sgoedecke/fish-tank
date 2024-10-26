@@ -75,9 +75,9 @@ function getASCIIState(fishId) {
 const BOTS = [
     // { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
     // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
-    { id: 'bot2', name: 'GPT 4o-mini', color: 'blue', model: 'gpt-4o-mini' },
+    // { id: 'bot2', name: 'GPT 4o-mini', color: 'blue', model: 'gpt-4o-mini' },
     // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: 'purple', model: 'Phi-3-small-8k-instruct' },
+    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: 'purple', model: 'Phi-3-small-8k-instruct' },
     { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
     // { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
 ];
@@ -362,10 +362,22 @@ function checkFishFoodCollection(fish) {
     });
 }
 
+let timeout;
+
+io.on('connection', (socket) => {
+    // set a timeout to disconnect the client after 15 minutes
+    setTimeout(() => {
+        socket.disconnect();
+    }, 1000 * 60 * 15); // 15 minutes,
+});
+
 // Game loop
 setInterval(() => {
     Object.values(gameState.fishes).forEach(fish => {
-        updateFish(fish);
+        // only get a new direction if at least one user is connected
+        if (io.engine.clientsCount > 0) {
+            updateFish(fish);
+        }
         checkFishFoodCollection(fish);
     });
     
