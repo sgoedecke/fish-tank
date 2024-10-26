@@ -1,5 +1,7 @@
 # AI Fish Tank
 
+https://fish-tank.onrender.com/
+
 Uses [GitHub Models](https://github.com/marketplace/models) to compare the performance of many small models in a simulated physics competition (collect the yellow dots):
 
 ![image](https://github.com/user-attachments/assets/0e743bfa-527b-48f9-9d4f-a4d61974c2b5)
