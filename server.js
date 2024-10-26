@@ -25,7 +25,8 @@ const GRID_SIZE = 20; // Size of ASCII grid
 const gameState = {
     ships: {},
     doubloons: [],
-    worldSize: { width: 400, height: 300 }
+    worldSize: { width: 400, height: 300 },
+    rateLimitExceeded: false
 };
 
 // Physics constants remain the same
@@ -33,6 +34,8 @@ const ACCELERATION = 0.2;
 const MAX_SPEED = 0.3;
 const FRICTION = 0.98;
 const BOUNCE_FACTOR = 1//0.8;
+
+const AI_DECISION_INTERVAL = 3500 // this will be xed by the number of models. It stays under the rate limit for low-tier models (at least until the daily limit is exceeded)
 
 // Convert game state to ASCII grid
 function getASCIIState(shipId) {
@@ -72,10 +75,11 @@ function getASCIIState(shipId) {
 const BOTS = [
     // { id: 'bot0', name: 'GPT 4o', color: '#FF6B6B', model: 'gpt-4o' },
     // { id: 'bot1', name: 'Llama-3.2-11B-Vision-Instruct', color: '#4ECDC4', model: 'Llama-3.2-11B-Vision-Instruct' },
-    { id: 'bot0', name: 'GPT 4o-mini', color: '#FF6B6B', model: 'gpt-4o-mini' },
-    { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
-    // { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
+    // { id: 'bot2', name: 'GPT 4o-mini', color: '#FFEEAD', model: 'gpt-4o-mini' },
+    // { id: 'bot3', name: 'Meta-Llama-3.1-8B-Instruct', color: '#96CEB4', model: 'Meta-Llama-3.1-8B-Instruct' },
+    { id: 'bot4', name: 'Phi-3-small-8k-instruct', color: '#FFEEAD', model: 'Phi-3-small-8k-instruct' },
     // { id: 'bot5', name: 'Phi-3-medium-4k-instruct', color: '#FF8C00', model: 'Phi-3-medium-4k-instruct' },
+    // { id: 'bot6', name: 'AI21-Jamba-1.5-Mini', color: '#FFEEEE', model: 'AI21-Jamba-1.5-Mini' },
 ];
 
 // Initialize bots with configurations
@@ -151,6 +155,11 @@ For example: "0.5,-0.7" will move the ship south-east. "0.0,1.0" will move the s
 console.log('\n\n', prompt)
 
     try {
+
+        if (gameState.rateLimitExceeded) {
+            throw new Error('Rate limit exceeded');
+       }
+
         const response = await client.path("/chat/completions").post({
             body: {
                 messages: [{ role: "user", content: prompt }],
@@ -182,6 +191,10 @@ console.log('\n\n', prompt)
             }
         } else {
             if (response.status == 429) {
+                gameState.rateLimitExceeded = true;
+                setTimeout(() => {
+                    gameState.rateLimitExceeded = false;
+                }, 60 * 10 * 1000); // 10 minute timeout
                 throw new Error('Rate limit exceeded');
             }
             io.emit('botLog', {
@@ -217,8 +230,7 @@ async function updateBotDirections() {
 
 // Set up periodic direction updates
 // To stay under the rate limits for Low models, we have to sit at 1 request every 3-4 seconds in total
-const interval = 3500 * Object.keys(gameState.ships).length;
-// const interval = 6500 * Object.keys(gameState.ships).length; // for high models
+const interval = AI_DECISION_INTERVAL * Object.keys(gameState.ships).length;
 
 spawnDoubloon() // make sure there's a goal to start with before we ask the AIs what to do
 
@@ -367,5 +379,3 @@ setInterval(() => {
 http.listen(3000, () => {
     console.log('Server running on port 3000');
 });
-
-// public/index.html
